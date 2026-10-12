@@ -23,6 +23,10 @@ const generateTokens = (userId: string) => {
 
 // Helper to determine if Email OTP is required from environment variable
 export const isEmailOtpRequired = (): boolean => {
+  /* =========================================================================
+   * TEMPORARILY DISABLED: Email Verification Code (OTP) functionality.
+   * Kept safely commented out so it can be enabled again later.
+   * =========================================================================
   const val = process.env.EMAIL_OTP_REQUIRED;
   if (val === undefined || val === null || val.trim() === '') {
     return true; // Default to true for security if missing
@@ -35,6 +39,8 @@ export const isEmailOtpRequired = (): boolean => {
     return true;
   }
   return true; // Default to true for security if invalid
+  ========================================================================= */
+  return false;
 };
 
 // Safe public authentication configuration endpoint
@@ -132,6 +138,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    /* =========================================================================
+     * TEMPORARILY DISABLED: Email Verification Code (OTP) generation during login.
+     * Keep all code safely commented out so it can be enabled again later.
+     * =========================================================================
     // Check if Email OTP verification is required for login
     const otpRequired = isEmailOtpRequired();
 
@@ -165,6 +175,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+    ========================================================================= */
 
     // Update last login
     user.lastLogin = new Date();
@@ -329,6 +340,10 @@ export const registerUser = async (req: AuthRequest, res: Response): Promise<voi
 
 // Verify Email
 export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  /* =========================================================================
+   * TEMPORARILY DISABLED: OTP verification code used during login.
+   * Kept safely commented out so it can be re-enabled later.
+   * =========================================================================
   try {
     const { token } = req.body;
 
@@ -406,6 +421,11 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
+  ========================================================================= */
+
+  res.status(200).json({
+    message: 'Email OTP verification is temporarily disabled. Please log in directly with your registered Email and Password.',
+  });
 };
 
 // Resend Verification Email

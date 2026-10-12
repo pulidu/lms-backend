@@ -1,0 +1,36 @@
+# Node.js & npm
+node_modules/
+npm-debug.log*
+.yarn*
+.pnpm*
+
+# Environment variables
+.env
+.env.*
+
+# Build directories
+build/
+dist/
+
+# Production artifacts
+coverage/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# IDE & editor folders
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Misc
+*.tgz
+
+# Ignore secrets
+secrets/

@@ -10,6 +10,8 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5003;
 
+const server = http.createServer(app);
+
 const startServer = async () => {
   // 1. Connect database
   await connectDB();
@@ -20,11 +22,10 @@ const startServer = async () => {
   // 3. Seed professional university sample records if database is fresh
   await seedSampleData();
 
-  // 3. Create server and socket
-  const server = http.createServer(app);
+  // 4. Create server and socket
   initSocket(server);
 
-  // 4. Start listening
+  // 5. Start listening
   server.listen(PORT, () => {
     console.log(`Backend server listening on http://localhost:${PORT}`);
   });
@@ -33,3 +34,7 @@ const startServer = async () => {
 startServer().catch((error) => {
   console.error('Server boot failed:', error);
 });
+
+export default app;
+export { server };
+

@@ -21,33 +21,42 @@ const generateTokens = (userId: string) => {
   return { accessToken, refreshToken };
 };
 
-// Seed Default Admin Function
+// Safe Admin Initialization Function
 export const seedDefaultAdmin = async (): Promise<void> => {
   try {
-    const adminExists = await User.findOne({ email: 'admin@lms.com' });
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('Admin@1234', salt);
-    
-    if (!adminExists) {
-      const admin = await User.create({
-        firstName: 'System',
-        lastName: 'Admin',
-        email: 'admin@lms.com',
-        password: hashedPassword,
-        role: 'admin',
-        status: 'active',
-        isEmailVerified: true,
-        isFirstLogin: true,
-      });
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@lms.com';
+    const adminExists = await User.findOne({ email: adminEmail });
 
-      console.log('Seeded default admin user: admin@lms.com / Admin@1234');
-    } else {
-      adminExists.password = hashedPassword;
-      await adminExists.save();
-      console.log('Updated existing default admin user password to Admin@1234');
+    if (adminExists) {
+      // Preserve existing admin account and password without overwriting
+      console.log(`Admin account [${adminEmail}] is verified and active.`);
+      return;
     }
+
+    // In production, avoid creating arbitrary accounts without explicit approval/credentials
+    if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
+      console.warn('Production notice: Default admin does not exist. Set ADMIN_EMAIL and ADMIN_PASSWORD to initialize.');
+      return;
+    }
+
+    const initialPassword = process.env.ADMIN_PASSWORD || 'Admin@1234';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(initialPassword, salt);
+
+    await User.create({
+      firstName: 'System',
+      lastName: 'Admin',
+      email: adminEmail,
+      password: hashedPassword,
+      role: 'admin',
+      status: 'active',
+      isEmailVerified: true,
+      isFirstLogin: true,
+    });
+
+    console.log(`Initial admin user created successfully: ${adminEmail}`);
   } catch (err) {
-    console.error('Failed to seed default admin:', err);
+    console.error('Failed to verify or seed admin account:', err);
   }
 };
 

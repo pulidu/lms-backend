@@ -11,6 +11,7 @@ import {
   getAllUsers,
   updateUserStatus,
   updateUser,
+  deleteUser,
 } from '../controllers/noticeController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
@@ -38,6 +39,8 @@ router.put('/notifications/read/:id', markNotificationAsRead);
 // User Status Management (Admin, Staff & Lecturer)
 router.get('/users/all', authorize('admin', 'staff', 'lecturer'), getAllUsers);
 router.put('/users/status/:userId', authorize('admin', 'staff'), updateUserStatus);
+router.patch('/users/status/:userId', authorize('admin', 'staff'), updateUserStatus);
 router.put('/users/edit/:userId', authorize('admin', 'staff'), updateUser);
+router.delete('/users/:userId', authorize('admin'), deleteUser);
 
 export default router;

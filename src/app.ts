@@ -8,6 +8,7 @@ import assignmentRoutes from './routes/assignmentRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
 import { connectDB, sanitizeMongoUri } from './config/db.js';
 
@@ -48,6 +49,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/notice', noticeRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

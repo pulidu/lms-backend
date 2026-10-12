@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Notice, Announcement, Notification } from '../models/Interactions.js';
 import { Timetable, Payment, ActivityLog } from '../models/Management.js';
 import { User } from '../models/User.js';
@@ -220,8 +221,21 @@ export const getAllUsers = async (req: AuthRequest, res: Response): Promise<void
 
 export const updateUserStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.id || req.params.userId;
     const { status } = req.body;
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(400).json({ message: 'Invalid user ID format' });
+      return;
+    }
+
+    const allowedStatuses = ['pending', 'active', 'inactive', 'suspended', 'disabled'];
+    if (!status || !allowedStatuses.includes(status)) {
+      res.status(400).json({
+        message: 'Invalid status value. Allowed statuses: pending, active, inactive',
+      });
+      return;
+    }
 
     const user = await User.findById(userId);
     if (!user) {
@@ -229,15 +243,66 @@ export const updateUserStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
+    // Role check: Only authenticated Admin and Staff can update statuses
+    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+      res.status(403).json({ message: 'Only Admin and Staff can update account statuses' });
+      return;
+    }
+
+    // Staff restriction: Staff can only modify student accounts
     if (req.user?.role === 'staff' && user.role !== 'student') {
       res.status(403).json({ message: 'Staff can only modify student accounts' });
       return;
     }
 
+    // Update status only (do not touch email verification or unrelated fields)
     user.status = status;
     await user.save();
 
-    res.status(200).json({ message: `User status changed to ${status}`, user });
+    res.status(200).json({
+      message: `Account status updated to ${status}`,
+      status: user.status,
+      user: {
+        _id: user._id,
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        isEmailVerified: user.isEmailVerified,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.params.id || req.params.userId;
+
+    if (req.user?.role !== 'admin') {
+      res.status(403).json({ message: 'Only Admin is allowed to delete user accounts' });
+      return;
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(400).json({ message: 'Invalid user ID format' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    await User.findByIdAndDelete(userId);
+    await StudentProfile.deleteOne({ userId });
+    await StaffProfile.deleteOne({ userId });
+
+    res.status(200).json({ message: 'User account successfully deleted' });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }

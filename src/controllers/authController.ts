@@ -76,16 +76,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check account status
-    if (user.status === 'suspended') {
-      res.status(403).json({ message: 'Account is suspended' });
-      return;
-    }
-    if (user.status === 'disabled') {
-      res.status(403).json({ message: 'Account is disabled' });
-      return;
-    }
-
     // Verify password first
     const isMatch = await bcrypt.compare(password, user.password || '');
     if (!isMatch) {
@@ -93,8 +83,29 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Block if not email verified and status is pending, trigger code modal flow
-    if (!user.isEmailVerified && user.status === 'pending') {
+    // Check account status
+    if (user.status === 'inactive') {
+      res.status(403).json({ message: 'Your account is inactive. Please contact administration.' });
+      return;
+    }
+
+    if (user.status === 'pending') {
+      res.status(403).json({ message: 'Your account is pending approval. Please wait for an administrator or staff member to activate your account.' });
+      return;
+    }
+
+    if (user.status === 'suspended') {
+      res.status(403).json({ message: 'Your account is suspended. Contact administration.' });
+      return;
+    }
+
+    if (user.status === 'disabled') {
+      res.status(403).json({ message: 'Your account is disabled.' });
+      return;
+    }
+
+    // Block if not email verified, trigger code modal flow
+    if (!user.isEmailVerified) {
       // Generate short 6-digit verification code
       const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
       await EmailVerification.create({
@@ -313,11 +324,19 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
     }
 
     user.isEmailVerified = true;
-    user.status = 'active';
+    // For non-students, set active; for students, status remains pending until approved by Admin or Staff
+    if (user.role !== 'student') {
+      user.status = 'active';
+    }
     await user.save();
 
     verification.isVerified = true;
     await verification.save();
+
+    if (user.role === 'student' && user.status === 'pending') {
+      res.status(200).json({ message: 'Email verified successfully. Your account is pending administrator or staff approval.' });
+      return;
+    }
 
     res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
   } catch (err: any) {
@@ -475,6 +494,11 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
     if (!user) {
       res.status(401).json({ message: 'Invalid token user' });
+      return;
+    }
+
+    if (user.status === 'inactive' || user.status === 'pending' || user.status === 'suspended' || user.status === 'disabled') {
+      res.status(403).json({ message: `Account is ${user.status}. Access denied.` });
       return;
     }
 

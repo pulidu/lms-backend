@@ -15,7 +15,7 @@ export interface IUser extends Document {
   address?: string;
   gender?: 'male' | 'female' | 'other';
   dateOfBirth?: Date;
-  status: 'pending' | 'active' | 'suspended' | 'disabled';
+  status: 'pending' | 'active' | 'inactive' | 'suspended' | 'disabled';
   isEmailVerified: boolean;
   isFirstLogin: boolean;
   lastLogin?: Date;
@@ -40,7 +40,7 @@ const UserSchema = new Schema<IUser>(
     dateOfBirth: { type: Date },
     status: {
       type: String,
-      enum: ['pending', 'active', 'suspended', 'disabled'],
+      enum: ['pending', 'active', 'inactive', 'suspended', 'disabled'],
       default: 'pending',
     },
     isEmailVerified: { type: Boolean, default: false },

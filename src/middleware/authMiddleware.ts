@@ -36,6 +36,16 @@ export const protect = async (
       return;
     }
 
+    if (user.status === 'inactive') {
+      res.status(403).json({ message: 'Your account is inactive. Please contact administration.' });
+      return;
+    }
+
+    if (user.status === 'pending') {
+      res.status(403).json({ message: 'Your account is pending approval. Please wait for an administrator or staff member to activate your account.' });
+      return;
+    }
+
     if (user.status === 'suspended') {
       res.status(403).json({ message: 'Your account is suspended. Contact administration.' });
       return;

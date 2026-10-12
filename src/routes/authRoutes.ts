@@ -11,6 +11,7 @@ import {
   getProfile,
   updateProfile,
   getProfileImage,
+  getAuthConfig,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
@@ -19,6 +20,7 @@ import { upload } from '../middleware/uploadMiddleware.js';
 const router = Router();
 
 // Public routes
+router.get('/config', getAuthConfig);
 router.post('/login', login);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerificationEmail);

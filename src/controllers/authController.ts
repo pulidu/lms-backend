@@ -21,6 +21,29 @@ const generateTokens = (userId: string) => {
   return { accessToken, refreshToken };
 };
 
+// Helper to determine if Email OTP is required from environment variable
+export const isEmailOtpRequired = (): boolean => {
+  const val = process.env.EMAIL_OTP_REQUIRED;
+  if (val === undefined || val === null || val.trim() === '') {
+    return true; // Default to true for security if missing
+  }
+  const normalized = val.trim().toLowerCase();
+  if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+    return false;
+  }
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+    return true;
+  }
+  return true; // Default to true for security if invalid
+};
+
+// Safe public authentication configuration endpoint
+export const getAuthConfig = async (req: Request, res: Response): Promise<void> => {
+  res.status(200).json({
+    emailOtpRequired: isEmailOtpRequired(),
+  });
+};
+
 // Safe Admin Initialization Function
 export const seedDefaultAdmin = async (): Promise<void> => {
   try {
@@ -104,8 +127,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Block if not email verified, trigger code modal flow
-    if (!user.isEmailVerified) {
+    if (user.status !== 'active') {
+      res.status(403).json({ message: `Account is ${user.status}. Access denied.` });
+      return;
+    }
+
+    // Check if Email OTP verification is required for login
+    const otpRequired = isEmailOtpRequired();
+
+    if (otpRequired) {
       // Generate short 6-digit verification code
       const verificationToken = crypto.randomBytes(3).toString('hex').toUpperCase();
       await EmailVerification.create({
@@ -130,6 +160,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(200).json({
         status: 'pending_verification',
         email: user.email,
+        emailOtpRequired: true,
         message: 'Please verify your email address to log in.',
       });
       return;
@@ -323,22 +354,55 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    user.isEmailVerified = true;
-    // For non-students, set active; for students, status remains pending until approved by Admin or Staff
-    if (user.role !== 'student') {
-      user.status = 'active';
+    // Ensure OTP endpoints cannot be used to bypass account status checks
+    if (user.status === 'inactive') {
+      res.status(403).json({ message: 'Your account is inactive. Please contact administration.' });
+      return;
     }
+
+    if (user.status === 'pending') {
+      verification.isVerified = true;
+      await verification.save();
+      user.isEmailVerified = true;
+      await user.save();
+      res.status(403).json({ message: 'Your account is pending approval. Please wait for an administrator or staff member to activate your account.' });
+      return;
+    }
+
+    if (user.status === 'suspended') {
+      res.status(403).json({ message: 'Your account is suspended. Contact administration.' });
+      return;
+    }
+
+    if (user.status === 'disabled') {
+      res.status(403).json({ message: 'Your account is disabled.' });
+      return;
+    }
+
+    user.isEmailVerified = true;
+    user.lastLogin = new Date();
     await user.save();
 
     verification.isVerified = true;
     await verification.save();
 
-    if (user.role === 'student' && user.status === 'pending') {
-      res.status(200).json({ message: 'Email verified successfully. Your account is pending administrator or staff approval.' });
-      return;
-    }
+    // Issue authentication tokens only after successful verification
+    const { accessToken, refreshToken } = generateTokens(user._id.toString());
 
-    res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
+    res.status(200).json({
+      message: 'Email verified successfully. Login successful.',
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isFirstLogin: user.isFirstLogin,
+        status: user.status,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
